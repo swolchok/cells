@@ -171,42 +171,42 @@ class Game:
     #apply agent actions
     for (agent,action) in actions:
       agent.energy -= 1
-      if agent.alive:
-        if action.type == ACT_MOVE:
-          act_x, act_y = action.get_data()
-          (new_x, new_y) = self.get_next_move(agent.x, agent.y, act_x, act_y)
-          if self.agent_map.in_range(new_x, new_y) and not self.agent_map.get(new_x, new_y):
-            self.move_agent(agent, new_x, new_y)
-        elif action.type == ACT_SPAWN:
-          act_x, act_y = action.get_data()[:2]
-          (new_x, new_y) = self.get_next_move(agent.x, agent.y, act_x, act_y)
-          if self.agent_map.in_range(new_x, new_y) and (not self.agent_map.get(new_x, new_y)) and agent.energy >= SPAWN_MIN_ENERGY:
-            agent.energy -= SPAWN_COST
-            agent.energy /= 2
-            a = Agent(new_x, new_y, agent.energy, agent.get_team(),self.minds[agent.get_team()], action.get_data()[2:])
-            self.add_agent(a)
-        elif action.type == ACT_EAT:
-          intake = self.energy_map.get(agent.x, agent.y)
-          agent.energy += intake
-          agent.energy = min(agent.energy, ENERGY_CAP)
+#      if agent.alive:
+      if action.type == ACT_MOVE:
+        act_x, act_y = action.get_data()
+        (new_x, new_y) = self.get_next_move(agent.x, agent.y, act_x, act_y)
+        if self.agent_map.in_range(new_x, new_y) and not self.agent_map.get(new_x, new_y):
+          self.move_agent(agent, new_x, new_y)
+      elif action.type == ACT_SPAWN:
+        act_x, act_y = action.get_data()[:2]
+        (new_x, new_y) = self.get_next_move(agent.x, agent.y, act_x, act_y)
+        if self.agent_map.in_range(new_x, new_y) and (not self.agent_map.get(new_x, new_y)) and agent.energy >= SPAWN_MIN_ENERGY:
+          agent.energy -= SPAWN_COST
+          agent.energy /= 2
+          a = Agent(new_x, new_y, agent.energy, agent.get_team(),self.minds[agent.get_team()], action.get_data()[2:])
+          self.add_agent(a)
+      elif action.type == ACT_EAT:
+        intake = self.energy_map.get(agent.x, agent.y)
+        agent.energy += intake
+        agent.energy = min(agent.energy, ENERGY_CAP)
 
-          self.energy_map.change(agent.x, agent.y, -intake)
-        elif action.type == ACT_ATTACK:
-          act_x, act_y = act_data = action.get_data()
-          (new_x, new_y) = next_pos = self.get_next_move(agent.x, agent.y, act_x, act_y)
-          if self.agent_map.get(act_x, act_y) and (next_pos == act_data):
-            victim = self.agent_map.get(new_x, new_y)
-            if agent.attack(victim):
-              self.energy_map.change(new_x, new_y, DEATH_DROP)
-              self.del_agent(victim)
-        elif action.type == ACT_LIFT:
-          if not agent.loaded and self.terr.get(agent.x, agent.y) > 0:
-            agent.loaded = True
-            self.terr.change(agent.x, agent.y, -1)
-        elif action.type == ACT_DROP:
-          if agent.loaded:
-            agent.loaded = False
-            self.terr.change(agent.x, agent.y, 1)
+        self.energy_map.change(agent.x, agent.y, -intake)
+      elif action.type == ACT_ATTACK:
+        act_x, act_y = act_data = action.get_data()
+        (new_x, new_y) = next_pos = self.get_next_move(agent.x, agent.y, act_x, act_y)
+        if self.agent_map.get(act_x, act_y) and (next_pos == act_data):
+          victim = self.agent_map.get(new_x, new_y)
+          if agent.attack(victim):
+            self.energy_map.change(new_x, new_y, DEATH_DROP)
+            self.del_agent(victim)
+      elif action.type == ACT_LIFT:
+        if not agent.loaded and self.terr.get(agent.x, agent.y) > 0:
+          agent.loaded = True
+          self.terr.change(agent.x, agent.y, -1)
+      elif action.type == ACT_DROP:
+        if agent.loaded:
+          agent.loaded = False
+          self.terr.change(agent.x, agent.y, 1)
 
     #let agents die if their energy is too low
     team = [0, 0]
@@ -280,12 +280,20 @@ class ObjectMapLayer(MapLayer):
     ret = []
     get = self.get
     append = ret.append
+    width = self.width
+    height = self.height
     for dx in (-1, 0, 1):
       for dy in (-1, 0, 1):
         if not (dx or dy):
           continue
         try:
-          a = self.values[x + dx, y + dy]
+          adj_x = x + dx
+          if not 0 <= adj_x < width:
+              continue
+          adj_y = y + dy
+          if not 0 <= adj_y < height:
+              continue
+          a = self.values[adj_x, adj_y]
           if a is not None:
             append(a.get_view())
         except IndexError:
