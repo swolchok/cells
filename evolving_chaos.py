@@ -99,7 +99,7 @@ class AgentMind:
       self.mode = MODE_NORMAL
 
     if self.mode == MODE_PREP:
-      dist = max(abs(mx-self.target[0]),abs(my-self.target[1]))
+      dist = abs(mx-self.target[0]) + abs(my-self.target[1])
       self.target_range = max(dist,self.target_range)
       if me.energy > dist*1.5:
         self.mode = self.next_mode
@@ -127,7 +127,7 @@ class AgentMind:
 
     my_plant = self.my_plant
     if my_plant is not None:
-      dist = max(abs(mx-self.my_plant.get_pos()[0]),abs(my-self.my_plant.get_pos()[1])) 
+      dist = abs(mx-self.my_plant.get_pos()[0]) + abs(my-self.my_plant.get_pos()[1])
       if me.energy < dist*1.5:
         return cells.Action(cells.ACT_MOVE,
                             (fuzz_coord(my_plant.x), fuzz_coord(my_plant.y)))

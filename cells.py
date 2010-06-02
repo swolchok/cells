@@ -22,6 +22,15 @@ import time
 import numpy
 import pygame
 
+ATTACK_POWER = 20
+DEATH_DROP = 25
+ENERGY_CAP = 600
+
+SPAWN_MIN_ENERGY = 50
+SPAWN_COST = 20
+
+STARTING_ENERGY = 25
+
 config = ConfigParser.RawConfigParser()
 try:
     config.read('default.cfg')
@@ -104,7 +113,7 @@ class Game:
       (mx,my) = self.plant_population[idx].get_pos() 
       fuzzed_x = mx + random.randrange(-1,2)
       fuzzed_y = my + random.randrange(-1,2)
-      self.agent_population.append(Agent(fuzzed_x, fuzzed_y, idx, self.minds[idx], None))
+      self.agent_population.append(Agent(fuzzed_x, fuzzed_y, STARTING_ENERGY, idx, self.minds[idx], None))
       self.agent_map.insert(self.agent_population)
 
   def run_plants(self):
@@ -170,21 +179,25 @@ class Game:
         elif action.type == ACT_SPAWN:
           act_x, act_y = action.get_data()[:2]
           (new_x, new_y) = self.get_next_move(agent.x, agent.y, act_x, act_y)
-          if self.agent_map.in_range(new_x, new_y) and (not self.agent_map.get(new_x, new_y)) and agent.energy >= 50:
-            a = Agent(new_x, new_y, agent.get_team(),self.minds[agent.get_team()], action.get_data()[2:])
+          if self.agent_map.in_range(new_x, new_y) and (not self.agent_map.get(new_x, new_y)) and agent.energy >= SPAWN_MIN_ENERGY:
+            agent.energy -= SPAWN_COST
+            agent.energy /= 2
+            a = Agent(new_x, new_y, agent.energy, agent.get_team(),self.minds[agent.get_team()], action.get_data()[2:])
             self.add_agent(a)
-            agent.energy -= 50
         elif action.type == ACT_EAT:
           intake = self.energy_map.get(agent.x, agent.y)
           agent.energy += intake
+          agent.energy = min(agent.energy, ENERGY_CAP)
+
           self.energy_map.change(agent.x, agent.y, -intake)
         elif action.type == ACT_ATTACK:
           act_x, act_y = act_data = action.get_data()
           (new_x, new_y) = next_pos = self.get_next_move(agent.x, agent.y, act_x, act_y)
           if self.agent_map.get(act_x, act_y) and (next_pos == act_data):
-            energy = self.agent_map.get(new_x, new_y).energy + 25
-            self.energy_map.change(new_x, new_y, energy)
-            self.del_agent(self.agent_map.get(new_x, new_y))
+            victim = self.agent_map.get(new_x, new_y)
+            if agent.attack(victim):
+              self.energy_map.change(new_x, new_y, DEATH_DROP)
+              self.del_agent(victim)
         elif action.type == ACT_LIFT:
           if not agent.loaded and self.terr.get(agent.x, agent.y) > 0:
             agent.loaded = True
@@ -288,11 +301,11 @@ class ObjectMapLayer(MapLayer):
 class Agent:
   __slots__ = ['x', 'y', 'mind', 'energy', 'alive', 'team', 'loaded', 'color',
                'act']
-  def __init__(self, x, y, team, AgentMind, cargs):
+  def __init__(self, x, y, energy, team, AgentMind, cargs):
     self.x = x
     self.y = y
     self.mind = AgentMind(cargs)
-    self.energy = 25
+    self.energy = energy
     self.alive = True
     self.team = team
     self.loaded = False
@@ -301,6 +314,10 @@ class Agent:
     else:
       self.color = (0,0,255)
     self.act = self.mind.act
+
+  def attack(self, other):
+    other.energy -= ATTACK_POWER
+    return other.energy <= 0
 
   def get_team(self):
     return self.team
